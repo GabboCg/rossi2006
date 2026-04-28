@@ -11,11 +11,11 @@ library("dplyr")
 start_time <- Sys.time()
 
 # auxiliary functions
-source("Functions/dm-test.R")
-source("Functions/enc-new.R")
+source("R/dm-test.R")
+source("R/enc-new.R")
 
 # Read Rossi (2005) dataset
-predictor_data <- read_xls("Dataset/PredictorData1998.xls")
+predictor_data <- read_xls("data/PredictorData1998.xls")
 
 # Out-Of-Sample Forecasting
 
