@@ -1,16 +1,26 @@
-#'---
-#' author: Gabriel E. Cabrera
-#' title: Comparing Out-Of-Sample Forecasts
-#' date: Last updated `r Sys.Date()`
-#'---
+#!/usr/bin/env Rscript
+# ======================================================== #
+#
+#                  Replication of Table 1 
+#
+#                 Gabriel E. Cabrera-Guzmán
+#                The University of Manchester
+#
+#                        Spring, 2026
+#
+#                https://gcabrerag.rbind.io
+#
+# ------------------------------ #
+# email: gabriel.cabreraguzman@postgrad.manchester.ac.uk
+# ======================================================== #
 
-# packages
+# Read packages
 library("readxl")
 library("dplyr")
 
 start_time <- Sys.time()
 
-# auxiliary functions
+# Read auxiliary functions
 source("R/dm-test.R")
 source("R/enc-new.R")
 
@@ -19,10 +29,10 @@ predictor_data <- read_xls("data/PredictorData1998.xls")
 
 # Out-Of-Sample Forecasting
 
-ys <- predictor_data %>% 
-  janitor::clean_names() %>%
-  select(date, 9, 14, 19, 24, 29) %>% 
-  mutate_at(vars(2:6), list(~ log(. / lag(., 1)))) %>%  
+ys <- predictor_data |> 
+  janitor::clean_names() |>
+  select(date, 9, 14, 19, 24, 29) |> 
+  mutate_at(vars(2:6), list(~ log(. / lag(., 1)))) |>  
   rename("can" = 2, "fr" = 3, "ger" = 4, "it" = 5, "jap" = 6) 
 
 n_row <- nrow(ys) - 3
@@ -44,10 +54,10 @@ colnames(fc_rw) <- c("rw")
 for (i in 1:(n_col - 1)) {
   
   # generate dataset with lag
-  xs_i <- ys[,(i + 1)] %>%
-    rename("y_i" = 1) %>%  
-    mutate(x_i = lag(y_i, 1)) %>% 
-    na.omit() %>% 
+  xs_i <- ys[,(i + 1)] |>
+    rename("y_i" = 1) |>  
+    mutate(x_i = lag(y_i, 1)) |> 
+    na.omit() |> 
     slice(-1)
     
   for (j in 1:p) {
@@ -64,7 +74,7 @@ for (i in 1:(n_col - 1)) {
     fc_exchange[j, i] <- predict(ar1_i_j, xnew)
     
     # actual
-    actual[j, i] <- xs_i[(r + j), 1] %>% 
+    actual[j, i] <- xs_i[(r + j), 1] |> 
       pull() 
     
     # random walk
