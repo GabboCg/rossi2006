@@ -15,6 +15,7 @@
 # email: gabriel.cabreraguzman@postgrad.manchester.ac.uk
 # ======================================================== #
 
+# Load packages
 library("expm")
 
 start_time <- Sys.time()
@@ -105,6 +106,7 @@ run_tests <- function(ntable, data_full) {
     # ==========================================
     #                   LR Test
     # ------------------------------------------
+
     z_full <- cbind(1, p1)
     bhat <- gmm_beta(e1, z_full, z_full, heter)
     varb <- gmm_var(e1, z_full, z_full, heter)
@@ -116,6 +118,7 @@ run_tests <- function(ntable, data_full) {
     # ==========================================
     #             TVP and Optimal tests
     # ------------------------------------------
+
     t2v <- mround(n_obs * 0.15):mround(n_obs * 0.85)
     Andrews <- numeric(length(t2v))
     AP <- 0
@@ -144,23 +147,23 @@ run_tests <- function(ntable, data_full) {
       
     }
 
-    # TVP test statistics
+    # --- TVP test statistics ---
     SupLR <- max(Andrews)
     ExpW <- log((1 / (0.85 - 0.15)) * AP / n_obs)
     Nyblom_val <- (1 / (0.85 - 0.15)) * Nyb / n_obs
 
-    # Optimal test statistics
+    # --- Optimal test statistics ---
     SupLRopt <- max(LLR7v)
     ExpWopt <- log((1 / (0.85 - 0.15)) * AP0 / n_obs)
     MeanWopt <- (1 / (0.85 - 0.15)) * AP00 / n_obs
     Nyblomopt <- nyblom_star(e1, p1restr, p1unr, p1plusc, heter, rep(0, ncol(p1restr)))
 
-    # P-values for TVP tests
+    # --- P-values for TVP tests ---
     pvSupLR <- pv_calc(SupLR, pvqlrsb, restr)
     pvExpW <- pv_calc(ExpW, pvapisb, restr)
     pvNyblom <- pv_calc(Nyblom_val, pvnybsb, restr)
 
-    # P-values for optimal tests
+    # --- P-values for optimal tests ---
     pvSupLRopt <- pv_calc(SupLRopt, pvqlropt, restr)
     pvExpWopt <- pv_calc(ExpWopt, pvapiopt, restr)
     pvMeanWopt <- pv_calc(MeanWopt, pvap0opt, restr)
@@ -169,6 +172,7 @@ run_tests <- function(ntable, data_full) {
     # ==========================================
     #              Out-of-sample tests
     # ------------------------------------------
+
     R <- mround(0.5 * n_obs)
     Pred <- n_obs - R
 
@@ -182,17 +186,17 @@ run_tests <- function(ntable, data_full) {
 
     for (j in 1:Pred) {
       
-      # Recursive (expanding window)
+      # --- Recursive (expanding window) ---
       x_recur <- cbind(1, p1[1:(R + j - 1), , drop = FALSE])
       b_recur <- solve(crossprod(x_recur)) %*% crossprod(x_recur, e1[1:(R + j - 1)])
       yo_recur[R + j] <- c(1, p1[R + j,]) %*% b_recur
 
-      # Split (fixed window)
+      # --- Split (fixed window) ---
       x_split <- cbind(1, p1[1:R, , drop = FALSE])
       b_split <- solve(crossprod(x_split)) %*% crossprod(x_split, e1[1:R])
       yo_split[R + j] <- c(1, p1[R + j,]) %*% b_split
 
-      # Rolling window
+      # --- Rolling window ---
       x_roll <- cbind(1, p1[j:(R + j - 1), , drop = FALSE])
       b_roll <- solve(crossprod(x_roll)) %*% crossprod(x_roll, e1[j:(R + j - 1)])
       yo_roll[R + j] <- c(1, p1[R + j,]) %*% b_roll
@@ -202,7 +206,7 @@ run_tests <- function(ntable, data_full) {
       
     }
 
-    # Extract OOS period
+    # --- Extract OOS period ---
     yo_r <- yo_recur[(R + 1):n_obs]
     yo_s <- yo_split[(R + 1):n_obs]
     yo_rl <- yo_roll[(R + 1):n_obs]
