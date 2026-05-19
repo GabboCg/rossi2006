@@ -52,21 +52,21 @@ countries <- c("Can.", "Fr.", "Ger.", "It.", "Jap.")
 # ------------------------------------------
 
 run_tests <- function(ntable, data_full) {
-
+  
   # Full results: 25 rows
   full_results <- matrix(NA, 25, 5)
-
+  
   for (ii in 1:5) {
-
+    
     data <- data_full
-
+    
     # No sample truncation for AR models (Table 1):
     # AR models only use exchange rates, not fundamentals with missing data
-
+    
     # Extract exchange rate (log level)
     e <- log(data[, 4 + 5 * (ii - 1) + 4])
     T_full <- length(e)
-
+    
     # Build regressors based on model type
     if (ntable == 71) {
       
@@ -85,7 +85,7 @@ run_tests <- function(ntable, data_full) {
       listunr <- NULL
       
     }
-
+    
     n_obs <- length(e1)
     kk <- ncol(p1)
     p1plusc <- cbind(1, p1)
@@ -100,13 +100,13 @@ run_tests <- function(ntable, data_full) {
       p1unr <- p1plusc[, listunr, drop = FALSE]
       
     }
-
+    
     restr <- length(listrestr)
-
+    
     # ==========================================
     #                   LR Test
     # ------------------------------------------
-
+    
     z_full <- cbind(1, p1)
     bhat <- gmm_beta(e1, z_full, z_full, heter)
     varb <- gmm_var(e1, z_full, z_full, heter)
@@ -118,7 +118,7 @@ run_tests <- function(ntable, data_full) {
     # ==========================================
     #             TVP and Optimal tests
     # ------------------------------------------
-
+    
     t2v <- mround(n_obs * 0.15):mround(n_obs * 0.85)
     Andrews <- numeric(length(t2v))
     AP <- 0
@@ -127,18 +127,18 @@ run_tests <- function(ntable, data_full) {
     AP0 <- 0
     AP00 <- 0
     Nyb0 <- 0
-
+    
     cat(sprintf("Country %d: Computing TVP tests (%d break points)...\n", ii, length(t2v)))
-
+    
     for (idx in seq_along(t2v)) {
       
       t2 <- t2v[idx]
-
+      
       chow <- chow_gmm(e1, p1restr, p1unr, p1plusc, t2, heter)
       Andrews[idx] <- chow
       AP <- AP + exp(0.5 * chow)
       Nyb <- Nyb + chow * (t2 / n_obs) * (1 - t2 / n_obs)
-
+      
       LLR7 <- chow_gmm_star(e1, p1restr, p1unr, p1plusc, t2, heter)
       LLR7v[idx] <- LLR7
       AP0 <- AP0 + exp(0.5 * LLR7)
@@ -146,23 +146,23 @@ run_tests <- function(ntable, data_full) {
       Nyb0 <- Nyb0 + LLR7 * (t2 / n_obs) * (1 - t2 / n_obs)
       
     }
-
+    
     # --- TVP test statistics ---
     SupLR <- max(Andrews)
     ExpW <- log((1 / (0.85 - 0.15)) * AP / n_obs)
     Nyblom_val <- (1 / (0.85 - 0.15)) * Nyb / n_obs
-
+    
     # --- Optimal test statistics ---
     SupLRopt <- max(LLR7v)
     ExpWopt <- log((1 / (0.85 - 0.15)) * AP0 / n_obs)
     MeanWopt <- (1 / (0.85 - 0.15)) * AP00 / n_obs
     Nyblomopt <- nyblom_star(e1, p1restr, p1unr, p1plusc, heter, rep(0, ncol(p1restr)))
-
+    
     # --- P-values for TVP tests ---
     pvSupLR <- pv_calc(SupLR, pvqlrsb, restr)
     pvExpW <- pv_calc(ExpW, pvapisb, restr)
     pvNyblom <- pv_calc(Nyblom_val, pvnybsb, restr)
-
+    
     # --- P-values for optimal tests ---
     pvSupLRopt <- pv_calc(SupLRopt, pvqlropt, restr)
     pvExpWopt <- pv_calc(ExpWopt, pvapiopt, restr)
@@ -172,47 +172,47 @@ run_tests <- function(ntable, data_full) {
     # ==========================================
     #              Out-of-sample tests
     # ------------------------------------------
-
+    
     R <- mround(0.5 * n_obs)
     Pred <- n_obs - R
-
+    
     yo_recur <- numeric(n_obs)
     yo_split <- numeric(n_obs)
     yo_roll <- numeric(n_obs)
     rw <- numeric(n_obs)
     true_val <- numeric(n_obs)
-
+    
     cat(sprintf("Country %d: Computing OOS forecasts (%d periods)...\n", ii, Pred))
-
+    
     for (j in 1:Pred) {
       
       # --- Recursive (expanding window) ---
       x_recur <- cbind(1, p1[1:(R + j - 1), , drop = FALSE])
       b_recur <- solve(crossprod(x_recur)) %*% crossprod(x_recur, e1[1:(R + j - 1)])
       yo_recur[R + j] <- c(1, p1[R + j,]) %*% b_recur
-
+      
       # --- Split (fixed window) ---
       x_split <- cbind(1, p1[1:R, , drop = FALSE])
       b_split <- solve(crossprod(x_split)) %*% crossprod(x_split, e1[1:R])
       yo_split[R + j] <- c(1, p1[R + j,]) %*% b_split
-
+      
       # --- Rolling window ---
       x_roll <- cbind(1, p1[j:(R + j - 1), , drop = FALSE])
       b_roll <- solve(crossprod(x_roll)) %*% crossprod(x_roll, e1[j:(R + j - 1)])
       yo_roll[R + j] <- c(1, p1[R + j,]) %*% b_roll
-
+      
       rw[R + j] <- 0
       true_val[R + j] <- e1[R + j]
       
     }
-
+    
     # --- Extract OOS period ---
     yo_r <- yo_recur[(R + 1):n_obs]
     yo_s <- yo_split[(R + 1):n_obs]
     yo_rl <- yo_roll[(R + 1):n_obs]
     rw_oos <- rw[(R + 1):n_obs]
     true_oos <- true_val[(R + 1):n_obs]
-
+    
     # --- DM and ENC-NEW for RECURSIVE ---
     u1_r <- (true_oos - yo_r) ^ 2
     u2 <- (true_oos - rw_oos) ^ 2
@@ -226,7 +226,7 @@ run_tests <- function(ntable, data_full) {
     if (ENCrecurs > oos_cv(restr, 0.10, 2, 1)) pvENCrecurs <- 0.10
     if (ENCrecurs > oos_cv(restr, 0.05, 2, 1)) pvENCrecurs <- 0.05
     if (ENCrecurs > oos_cv(restr, 0.01, 2, 1)) pvENCrecurs <- 0.01
-
+    
     # --- DM and ENC-NEW for ROLLING ---
     u1_rl <- (true_oos - yo_rl) ^ 2
     f_rl <- u1_rl - u2
@@ -239,7 +239,7 @@ run_tests <- function(ntable, data_full) {
     if (ENCroll > oos_cv(restr, 0.10, 2, 2)) pvENCroll <- 0.10
     if (ENCroll > oos_cv(restr, 0.05, 2, 2)) pvENCroll <- 0.05
     if (ENCroll > oos_cv(restr, 0.01, 2, 2)) pvENCroll <- 0.01
-
+    
     # --- DM and ENC-NEW for SPLIT ---
     u1_s <- (true_oos - yo_s) ^ 2
     f_s <- u1_s - u2
@@ -252,7 +252,7 @@ run_tests <- function(ntable, data_full) {
     if (ENCsplit > oos_cv(restr, 0.10, 2, 3)) pvENCsplit <- 0.10
     if (ENCsplit > oos_cv(restr, 0.05, 2, 3)) pvENCsplit <- 0.05
     if (ENCsplit > oos_cv(restr, 0.01, 2, 3)) pvENCsplit <- 0.01
-
+    
     # Store results
     full_results[1, ii]  <- round(as.numeric(LLR), 2)
     full_results[2, ii]  <- round(pvLLR, 2)
@@ -279,13 +279,13 @@ run_tests <- function(ntable, data_full) {
     full_results[23, ii] <- ENCsplit
     full_results[24, ii] <- ENCrecurs
     full_results[25, ii] <- ENCroll
-
+    
     cat(sprintf("Country %d done.\n\n", ii))
     
   }
-
+  
   colnames(full_results) <- countries
-
+  
   # Format ENC-NEW significance markers
   enc_format <- function(val, pv) {
     
@@ -300,7 +300,7 @@ run_tests <- function(ntable, data_full) {
     sprintf("%.2f%s", val, marker)
     
   }
-
+  
   # Build row names
   rn <- c(
     "LR_T", "(p-value)",
@@ -312,7 +312,7 @@ run_tests <- function(ntable, data_full) {
     "ENC_T split", "ENC_T recur", "ENC_T roll"
   )
   rownames(full_results) <- rn
-
+  
   return(full_results)
   
 }
@@ -351,7 +351,7 @@ format_enc <- function(val, restr, m2_type) {
   if (val > oos_cv(restr, 0.10, 2, m2_type)) pv <- 0.10
   if (val > oos_cv(restr, 0.05, 2, m2_type)) pv <- 0.05
   if (val > oos_cv(restr, 0.01, 2, m2_type)) pv <- 0.01
-
+  
   marker <- ""
   
   if (pv <= 0.01) marker <- "***"
@@ -359,7 +359,7 @@ format_enc <- function(val, restr, m2_type) {
   else if (pv <= 0.05) marker <- "** "
   else if (pv <= 0.10) marker <- "*  "
   else marker <- "   "
-
+  
   sprintf("%7.2f%s", val, marker)
   
 }
@@ -370,7 +370,7 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s %8s %8s %8s %8s %8s\n",
               "", "Can.", "Fr.", "Ger.", "It.", "Jap."))
   cat(paste(rep("-", 60), collapse = ""), "\n")
-
+  
   # LR_T
   cat(sprintf("%-16s", "LR_T"))
   cat(sprintf(" %8.2f", res[1, ]))
@@ -378,10 +378,10 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[2, ])))
   cat("\n")
-
+  
   # TVP tests header
   cat(paste(rep(" ", 25), collapse = ""), "TVP tests\n")
-
+  
   # QLR_T
   cat(sprintf("%-16s", "QLR_T"))
   cat(sprintf(" %8.2f", res[3, ]))
@@ -389,7 +389,7 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[4, ])))
   cat("\n")
-
+  
   # Exp-W_T
   cat(sprintf("%-16s", "Exp-W_T"))
   cat(sprintf(" %8.2f", res[5, ]))
@@ -397,7 +397,7 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[6, ])))
   cat("\n")
-
+  
   # Nyblom_T
   cat(sprintf("%-16s", "Nyblom_T"))
   cat(sprintf(" %8.2f", res[7, ]))
@@ -405,10 +405,10 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[8, ])))
   cat("\n")
-
+  
   # Optimal tests header
   cat(paste(rep(" ", 22), collapse = ""), "Optimal tests\n")
-
+  
   # Exp-W*_T
   cat(sprintf("%-16s", "Exp-W*_T"))
   cat(sprintf(" %8.2f", res[9, ]))
@@ -416,7 +416,7 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[10, ])))
   cat("\n")
-
+  
   # Mean-W*_T
   cat(sprintf("%-16s", "Mean-W*_T"))
   cat(sprintf(" %8.2f", res[11, ]))
@@ -424,7 +424,7 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[12, ])))
   cat("\n")
-
+  
   # Nyblom*_T
   cat(sprintf("%-16s", "Nyblom*_T"))
   cat(sprintf(" %8.2f", res[13, ]))
@@ -432,7 +432,7 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[14, ])))
   cat("\n")
-
+  
   # QLR*_T
   cat(sprintf("%-16s", "QLR*_T"))
   cat(sprintf(" %8.2f", res[15, ]))
@@ -440,10 +440,10 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[16, ])))
   cat("\n")
-
+  
   # OOS tests header
   cat(paste(rep(" ", 24), collapse = ""), "OOS tests\n")
-
+  
   # DM_T split
   cat(sprintf("%-16s", "DM_T split"))
   cat(sprintf(" %8.2f", res[17, ]))
@@ -451,7 +451,7 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[18, ])))
   cat("\n")
-
+  
   # DM_T recur
   cat(sprintf("%-16s", "DM_T recur"))
   cat(sprintf(" %8.2f", res[19, ]))
@@ -459,7 +459,7 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[20, ])))
   cat("\n")
-
+  
   # DM_T roll
   cat(sprintf("%-16s", "DM_T roll"))
   cat(sprintf(" %8.2f", res[21, ]))
@@ -467,17 +467,17 @@ print_table <- function(res, restr, label) {
   cat(sprintf("%-16s", ""))
   cat(sprintf(" %8s", sprintf("(%.2f)", res[22, ])))
   cat("\n")
-
+  
   # ENC_T split (with significance markers)
   cat(sprintf("%-16s", "ENC_T split"))
   for (j in 1:5) cat(format_enc(res[23, j], restr, 3))
   cat("\n")
-
+  
   # ENC_T recur
   cat(sprintf("%-16s", "ENC_T recur"))
   for (j in 1:5) cat(format_enc(res[24, j], restr, 1))
   cat("\n")
-
+  
   # ENC_T roll
   cat(sprintf("%-16s", "ENC_T roll"))
   for (j in 1:5) cat(format_enc(res[25, j], restr, 2))

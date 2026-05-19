@@ -4,10 +4,10 @@ pv_calc <- function(osser, tavola, kk) {
   # osser: observed value of the statistic
   # tavola: table with critical values (34 x (1 + num_restr_cols))
   # kk: number of restrictions (column index)
-
+  
   col_idx <- kk + 2  # column 1 is p-value grid, column kk+2 is the critical value
   numero <- tavola[, c(1, col_idx)]
-
+  
   if (osser <= tavola[1, col_idx]) {
     
     pv <- 1
@@ -24,7 +24,7 @@ pv_calc <- function(osser, tavola, kk) {
     pv <- sel[2, 1] + (sel[2, 2] - osser) * (sel[1, 1] - sel[2, 1]) / (sel[2, 2] - sel[1, 2])
     
   }
-
+  
   return(pv)
   
 }
@@ -43,22 +43,22 @@ oos_cv <- function(r, a, m1, m2) {
   # a: significance level (0.01, 0.05, 0.10)
   # m1: 1 = DM, 2 = ENC-NEW
   # m2: 1 = recursive, 2 = rolling, 3 = fixed/split
-
+  
   ooscvdat <- as.matrix(read.table("data-raw/ooscvdat.txt"))
-
+  
   if (m1 == 1) data <- ooscvdat[,1:9]
   if (m1 == 2) data <- ooscvdat[,10:18]
-
+  
   if (m2 == 1) data1 <- data[,1:3]
   if (m2 == 2) data1 <- data[,4:6]
   if (m2 == 3) data1 <- data[,7:9]
-
+  
   row <- data1[r,]
-
+  
   if (a == 0.01) col <- 1
   if (a == 0.05) col <- 2
   if (a == 0.10) col <- 3
-
+  
   return(row[col])
   
 }
